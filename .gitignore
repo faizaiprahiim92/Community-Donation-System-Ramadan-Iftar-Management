@@ -1,0 +1,24 @@
+# Node
+node_modules/
+.next/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Database
+database/*.db
+
+# Environment
+.env
+.env.local
+
+# VS Code
+.vscode/
+
+# Uploads (optional)
+uploads/photos/*
+uploads/videos/*
+!uploads/photos/.gitkeep
+!uploads/videos/.gitkeep
