@@ -2,10 +2,15 @@ services:
   - type: web
     name: community-donation-backend
     runtime: python
+    rootDir: backend
     plan: free
-    region: oregon
+    region: frankfurt
+
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    pythonVersion: "3.13.3"
+
     healthCheckPath: /api/health
     envVars:
       - key: APP_NAME
