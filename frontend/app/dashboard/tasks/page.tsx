@@ -29,6 +29,7 @@ export default function TasksPage() {
   const canDelete = canAccess(userRole, "tasks", "canDelete");
   const [data, setData] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [teamUsers, setTeamUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
@@ -51,6 +52,12 @@ export default function TasksPage() {
         setUsers(names.map((n) => ({ id: n.id, fullName: n.fullName } as User)));
       } catch {
         // name map may fail for Volunteers, create/edit will be hidden anyway
+      }
+      try {
+        const fullUsers = await usersService.list();
+        setTeamUsers(fullUsers);
+      } catch {
+        // full user list may be restricted for Volunteers, Add/Edit are hidden anyway
       }
     } catch {
       // API may be down
@@ -298,9 +305,9 @@ export default function TasksPage() {
         </div>
       )}
 
-      {modal === "add" && <AddTaskModal onClose={closeModal} onAdd={handleAdd} />}
+      {modal === "add" && <AddTaskModal onClose={closeModal} onAdd={handleAdd} users={teamUsers} />}
       {modal === "view" && selected && <ViewTaskModal task={selected} onClose={closeModal} />}
-      {modal === "edit" && selected && <EditTaskModal task={selected} onClose={closeModal} onSave={handleSave} />}
+      {modal === "edit" && selected && <EditTaskModal task={selected} onClose={closeModal} onSave={handleSave} users={teamUsers} />}
       {modal === "delete" && selected && <DeleteTaskModal task={selected} onClose={closeModal} onDelete={handleDelete} />}
       </>)}
     </div>

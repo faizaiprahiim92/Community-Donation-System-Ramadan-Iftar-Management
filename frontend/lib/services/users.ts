@@ -51,6 +51,22 @@ function toFrontend(u: BackendUser, idx: number): User {
   };
 }
 
+export interface CreateUserInput {
+  fullName: string;
+  username: string;
+  phone: string;
+  role: User["role"];
+  password: string;
+}
+
+export interface UpdateUserInput {
+  fullName: string;
+  username: string;
+  phone: string;
+  role: User["role"];
+  status: User["status"];
+}
+
 export const usersService = {
   async stats(): Promise<{ total: number; managers: number; leaders: number; volunteers: number; active: number }> {
     const res = await api.get("/api/users/stats/summary");
@@ -63,5 +79,26 @@ export const usersService = {
   async names(): Promise<{ id: number; fullName: string }[]> {
     const res = await api.get<{ id: number; full_name: string }[]>("/api/users/names");
     return res.data.map((u) => ({ id: u.id, fullName: u.full_name }));
+  },
+  async create(data: CreateUserInput): Promise<void> {
+    await api.post("/api/users", {
+      full_name: data.fullName,
+      username: data.username,
+      phone: data.phone,
+      role: data.role,
+      password: data.password,
+    });
+  },
+  async update(id: number, data: UpdateUserInput): Promise<void> {
+    await api.put(`/api/users/${id}`, {
+      full_name: data.fullName,
+      username: data.username,
+      phone: data.phone,
+      role: data.role,
+      is_active: data.status === "Active",
+    });
+  },
+  async remove(id: number): Promise<void> {
+    await api.delete(`/api/users/${id}`);
   },
 };

@@ -72,6 +72,8 @@ def create_message(
     db: Session = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
+    if data.is_announcement and current.role != "Manager":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only managers can create announcements")
     msg = Message(sender_id=current.id, **data.model_dump())
     db.add(msg)
     db.commit()
@@ -92,6 +94,8 @@ def update_message(
     msg = db.query(Message).filter(Message.id == message_id).first()
     if not msg:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+    if msg.is_announcement and current.role != "Manager":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only managers can update announcements")
     if current.role == "Volunteer" and msg.sender_id != current.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
     for key, value in data.model_dump(exclude_unset=True).items():

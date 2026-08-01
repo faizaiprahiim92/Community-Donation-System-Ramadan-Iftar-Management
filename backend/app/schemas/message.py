@@ -17,6 +17,10 @@ class MessageCreate(MessageBase):
 
 
 class MessageUpdate(BaseModel):
+    subject: str | None = None
+    content: str | None = None
+    priority: str | None = None
+    is_announcement: bool | None = None
     is_read: bool | None = None
     is_pinned: bool | None = None
     status: str | None = None

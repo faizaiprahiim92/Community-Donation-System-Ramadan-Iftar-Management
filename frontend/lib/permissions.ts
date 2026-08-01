@@ -56,6 +56,12 @@ export const pagePermissions: Record<string, PagePermission> = {
     canEdit: ["Manager", "Leader", "Volunteer"],
     canDelete: ["Manager"],
   },
+  announcements: {
+    canView: ["Manager", "Leader", "Volunteer"],
+    canCreate: ["Manager"],
+    canEdit: ["Manager"],
+    canDelete: ["Manager"],
+  },
 };
 
 export const sidebarPages: Record<string, Role[]> = {

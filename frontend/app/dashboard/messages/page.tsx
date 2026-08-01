@@ -1,6 +1,7 @@
 "use client";
 
 import PageHeader from "@/components/dashboard/PageHeader";
+import UserAvatar from "@/components/UserAvatar";
 
 const features = [
   { label: "Users Management", icon: "M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" },
@@ -14,11 +15,11 @@ const features = [
 ];
 
 const team = [
-  { name: "Usama Hassan Abdi", role: "Manager", photo: "/uploads/photos/Usama.jpg" },
-  { name: "Ilhaam Omar Farah", role: "Leader", photo: "/uploads/photos/Ilhaam.jpg" },
-  { name: "Faiza Ibrahiim Abdullahi", role: "Volunteer", photo: "/uploads/photos/Faiza.jpg" },
-  { name: "Nasteha Mohamed Hassan", role: "Volunteer", photo: "/uploads/photos/Nasteha.jpg" },
-  { name: "Sawda Mohamed Omar", role: "Volunteer", photo: "/uploads/photos/Sawda.jpg" },
+  { name: "Usama Hassan Abdi", role: "Manager" },
+  { name: "Ilhaam Omar Farah", role: "Leader" },
+  { name: "Faiza Ibrahiim Abdullahi", role: "Volunteer" },
+  { name: "Nasteha Mohamed Hassan", role: "Volunteer" },
+  { name: "Sawda Mohamed Omar", role: "Volunteer" },
 ];
 
 const techStack = [
@@ -142,7 +143,7 @@ export default function AboutUsPage() {
         <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {team.map((m) => (
             <div key={m.name} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3 sm:p-4 lg:p-5 transition-colors hover:bg-gray-50">
-              <img src={m.photo} alt={m.name} className="h-11 w-11 shrink-0 rounded-full object-cover shadow-sm" />
+              <UserAvatar name={m.name} className="h-11 w-11 shrink-0 rounded-full shadow-sm" textClassName="text-xs font-bold" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-gray-800">{m.name}</p>
                 <p className="text-[11px] font-medium text-gray-400">{m.role}</p>

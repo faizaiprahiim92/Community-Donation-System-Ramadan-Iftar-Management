@@ -159,6 +159,10 @@ export async function updateMessage(
   data: Partial<Message>
 ): Promise<void> {
   await api.put(`/api/messages/${id}`, {
+    subject: data.subject,
+    content: data.content,
+    priority: data.priority,
+    is_announcement: data.isAnnouncement,
     is_read: data.isRead,
     is_pinned: data.isPinned,
     status: data.status,

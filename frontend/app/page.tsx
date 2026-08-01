@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import UserAvatar from "@/components/UserAvatar";
 import PasswordInput from "@/components/ui/PasswordInput";
 
 /* ── Data ──────────────────────────────────────────── */
@@ -20,11 +21,11 @@ const features = [
 ];
 
 const team = [
-  { name: "Usama Hassan Abdi", role: "Manager", photo: "/uploads/photos/Usama.jpg" },
-  { name: "Ilhaam Omar Farah", role: "Leader", photo: "/uploads/photos/Ilhaam.jpg" },
-  { name: "Faiza Ibrahiim Abdullahi", role: "Volunteer", photo: "/uploads/photos/Faiza.jpg" },
-  { name: "Nasteha Mohamed Hassan", role: "Volunteer", photo: "/uploads/photos/Nasteha.jpg" },
-  { name: "Sawda Mohamed Omar", role: "Volunteer", photo: "/uploads/photos/Sawda.jpg" },
+  { name: "Usama Hassan Abdi", role: "Manager" },
+  { name: "Ilhaam Omar Farah", role: "Leader" },
+  { name: "Faiza Ibrahiim Abdullahi", role: "Volunteer" },
+  { name: "Nasteha Mohamed Hassan", role: "Volunteer" },
+  { name: "Sawda Mohamed Omar", role: "Volunteer" },
 ];
 
 const techStack = [
@@ -145,7 +146,7 @@ function AboutModal({ onClose }: { onClose: () => void }) {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {team.map((m) => (
                 <div key={m.name} className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-3 transition-colors hover:bg-gray-50">
-                  <img src={m.photo} alt={m.name} className="h-10 w-10 shrink-0 rounded-full object-cover shadow-sm" />
+                  <UserAvatar name={m.name} className="h-10 w-10 shrink-0 rounded-full shadow-sm" textClassName="text-xs font-bold" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-gray-800">{m.name}</p>
                     <p className="text-[11px] font-medium text-gray-400">{m.role}</p>

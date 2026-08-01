@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import UserAvatar from "@/components/UserAvatar";
 import { authService } from "@/lib/services/auth";
 
 interface TopbarProps {
@@ -41,12 +42,6 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
 
   const displayName = user?.full_name || "User";
   const role = user?.role || "Volunteer";
-  const initials = (() => {
-    const parts = displayName.split(" ");
-    return parts.length >= 2
-      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      : displayName.slice(0, 2).toUpperCase();
-  })();
 
   return (
     <>
@@ -98,9 +93,12 @@ export default function Topbar({ onMenuToggle }: TopbarProps) {
               onClick={() => setProfileOpen(!profileOpen)}
               className="flex items-center gap-2 rounded-lg p-1 sm:p-1.5 transition-colors hover:bg-gray-100 cursor-pointer"
             >
-              <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-[10px] sm:text-xs font-bold text-white shadow-md">
-                {initials}
-              </div>
+              <UserAvatar
+                name={displayName}
+                className="h-7 w-7 sm:h-8 sm:w-8 rounded-full shadow-md"
+                fallbackClassName="from-green-500 to-green-600"
+                textClassName="text-[10px] sm:text-xs font-bold"
+              />
               <svg className="hidden h-4 w-4 text-gray-400 sm:block" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
               </svg>

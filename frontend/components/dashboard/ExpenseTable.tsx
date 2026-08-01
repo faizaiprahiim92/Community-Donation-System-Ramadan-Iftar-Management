@@ -49,9 +49,6 @@ export default function ExpenseTable({
                 Total Cost
               </th>
               <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400">
-                Paid By
-              </th>
-              <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400">
                 Date
               </th>
               <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400">
@@ -66,7 +63,7 @@ export default function ExpenseTable({
             {data.length === 0 ? (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={10}
                   className="px-6 py-12 text-center text-sm text-gray-400"
                 >
                   No expenses found matching your criteria.
@@ -102,9 +99,6 @@ export default function ExpenseTable({
                   </td>
                   <td className="whitespace-nowrap px-5 py-3.5 text-sm font-semibold text-gray-800">
                     ${e.totalCost.toLocaleString()}
-                  </td>
-                  <td className="whitespace-nowrap px-5 py-3.5 text-sm text-gray-500">
-                    {e.paidBy}
                   </td>
                   <td className="whitespace-nowrap px-5 py-3.5 text-sm text-gray-500">
                     {e.date}

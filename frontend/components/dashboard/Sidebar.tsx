@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import UserAvatar from "@/components/UserAvatar";
 import { sidebarPages, type Role } from "@/lib/permissions";
 
 const sidebarNav = [
@@ -75,15 +76,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     return pathname.startsWith(href);
   }
 
-  function getInitials(name: string) {
-    const parts = name.split(" ");
-    return parts.length >= 2
-      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
-      : name.slice(0, 2).toUpperCase();
-  }
-
   const displayName = user?.full_name || "User";
-  const initials = getInitials(displayName);
   const role = user?.role || "Volunteer";
   const userRole = role as Role;
 
@@ -158,9 +151,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
         <div className="border-t border-green-50 p-4">
           <div className="flex items-center gap-3 rounded-xl bg-green-50/50 p-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-green-600 text-sm font-bold text-white shadow-md">
-              {initials}
-            </div>
+            <UserAvatar
+              name={displayName}
+              className="h-9 w-9 shrink-0 rounded-full shadow-md"
+              fallbackClassName="from-green-500 to-green-600"
+              textClassName="text-sm font-bold"
+            />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-gray-900">{displayName}</p>
               <p className="truncate text-xs text-gray-500">{role}</p>

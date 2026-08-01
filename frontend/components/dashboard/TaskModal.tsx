@@ -4,29 +4,17 @@ import { useState } from "react";
 import PriorityBadge from "./PriorityBadge";
 import TaskStatusBadge from "./TaskStatusBadge";
 import type { Task } from "@/lib/mock-data";
+import type { User } from "@/lib/services/users";
 
-const people = [
-  "Ahmed Hassan",
-  "Fatima Ali",
-  "Omar Mohamed",
-  "Amina Yusuf",
-  "Sara Ibrahim",
-  "Khalid Osman",
-  "Hassan Abdi",
-  "Abdirahman Ali",
-  "Maryam Said",
-];
-const roleMap: Record<string, Task["role"]> = {
-  "Ahmed Hassan": "Manager",
-  "Fatima Ali": "Leader",
-  "Omar Mohamed": "Volunteer",
-  "Amina Yusuf": "Leader",
-  "Sara Ibrahim": "Volunteer",
-  "Khalid Osman": "Manager",
-  "Hassan Abdi": "Volunteer",
-  "Abdirahman Ali": "Volunteer",
-  "Maryam Said": "Volunteer",
-};
+function toInputDate(value: string): string {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 const priorities: Task["priority"][] = ["Low", "Medium", "High"];
 const statuses: Task["status"][] = ["Pending", "In Progress", "Completed"];
 
@@ -45,18 +33,21 @@ const inputClass =
 export function AddTaskModal({
   onClose,
   onAdd,
+  users,
 }: {
   onClose: () => void;
   onAdd: (t: Omit<Task, "id">) => void;
+  users: User[];
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [assignedTo, setAssignedTo] = useState(people[0]);
+  const [assignedTo, setAssignedTo] = useState(users[0]?.fullName || "");
   const [priority, setPriority] = useState<Task["priority"]>("Medium");
   const [startDate, setStartDate] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [status, setStatus] = useState<Task["status"]>("Pending");
   const [notes, setNotes] = useState("");
+  const selectedUser = users.find((u) => u.fullName === assignedTo);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -64,8 +55,8 @@ export function AddTaskModal({
       name,
       description,
       assignedTo,
-      assignedToId: 0,
-      role: roleMap[assignedTo] || "Volunteer",
+      assignedToId: selectedUser?.id || 0,
+      role: (selectedUser?.role || "Volunteer") as Task["role"],
       priority,
       startDate: startDate || new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
       dueDate: dueDate || startDate || new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
@@ -99,12 +90,12 @@ export function AddTaskModal({
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Assign To *</label>
                   <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className={inputClass}>
-                    {people.map((p) => <option key={p} value={p}>{p}</option>)}
+                    {users.map((u) => <option key={u.id} value={u.fullName}>{u.fullName}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Role</label>
-                  <input value={roleMap[assignedTo] || "Volunteer"} readOnly className={`${inputClass} bg-gray-100`} />
+                  <input value={selectedUser?.role || "Volunteer"} readOnly className={`${inputClass} bg-gray-100`} />
                 </div>
               </div>
               <div>
@@ -240,19 +231,29 @@ export function EditTaskModal({
   task,
   onClose,
   onSave,
+  users,
 }: {
   task: Task;
   onClose: () => void;
   onSave: (t: Task) => void;
+  users: User[];
 }) {
   const [name, setName] = useState(task.name);
   const [description, setDescription] = useState(task.description);
   const [assignedTo, setAssignedTo] = useState(task.assignedTo);
   const [priority, setPriority] = useState<Task["priority"]>(task.priority);
-  const [startDate, setStartDate] = useState(task.startDate);
-  const [dueDate, setDueDate] = useState(task.dueDate);
+  const [startDate, setStartDate] = useState(() => toInputDate(task.startDate));
+  const [dueDate, setDueDate] = useState(() => toInputDate(task.dueDate));
   const [status, setStatus] = useState<Task["status"]>(task.status);
   const [notes, setNotes] = useState(task.notes ?? "");
+
+  const editAssignees = users.some((u) => u.fullName === assignedTo)
+    ? users.map((u) => u.fullName)
+    : [assignedTo, ...users.map((u) => u.fullName)];
+  const selectedRole: Task["role"] =
+    users.find((u) => u.fullName === assignedTo)?.role ||
+    task.role ||
+    "Volunteer";
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -261,7 +262,7 @@ export function EditTaskModal({
       name,
       description,
       assignedTo,
-      role: roleMap[assignedTo] || "Volunteer",
+      role: selectedRole,
       priority,
       startDate,
       dueDate,
@@ -295,12 +296,12 @@ export function EditTaskModal({
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Assign To *</label>
                   <select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} className={inputClass}>
-                    {people.map((p) => <option key={p} value={p}>{p}</option>)}
+                    {editAssignees.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-sm font-medium text-gray-700">Role</label>
-                  <input value={roleMap[assignedTo] || "Volunteer"} readOnly className={`${inputClass} bg-gray-100`} />
+                  <input value={selectedRole} readOnly className={`${inputClass} bg-gray-100`} />
                 </div>
               </div>
               <div>

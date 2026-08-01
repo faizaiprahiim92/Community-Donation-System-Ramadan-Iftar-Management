@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { usersService, type User } from "@/lib/services/users";
 import { useAuth } from "@/lib/contexts/AuthContext";
+import UserAvatar from "@/components/UserAvatar";
 import { canAccess, type Role } from "@/lib/permissions";
 import StatCard from "@/components/dashboard/StatCard";
 import PageHeader from "@/components/dashboard/PageHeader";
@@ -60,6 +61,15 @@ function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClos
   );
 }
 
+type UserFormData = {
+  fullName: string;
+  username: string;
+  phone: string;
+  role: User["role"];
+  password: string;
+  status: User["status"];
+};
+
 function AddEditUserModal({
   mode,
   user,
@@ -69,16 +79,49 @@ function AddEditUserModal({
   mode: "add" | "edit";
   user?: User;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (data: UserFormData) => Promise<void>;
 }) {
   const [form, setForm] = useState(
     user
       ? { ...user, password: "", confirmPassword: "" }
       : { ...emptyForm }
   );
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSave() {
+    setError("");
+    if (!form.fullName.trim() || !form.username.trim()) {
+      setError("Full name and username are required");
+      return;
+    }
+    if (mode === "add" && form.password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+    if (form.password && form.password !== form.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave({
+        fullName: form.fullName.trim(),
+        username: form.username.trim(),
+        phone: form.phone,
+        role: form.role,
+        password: form.password,
+        status: form.status,
+      });
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } } };
+      setError(axiosErr.response?.data?.detail || "Failed to save user");
+      setSaving(false);
+    }
   }
 
   return (
@@ -96,6 +139,9 @@ function AddEditUserModal({
         </div>
         <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
           <div className="space-y-4">
+            {error && (
+              <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+            )}
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Full Name</label>
               <input
@@ -181,10 +227,11 @@ function AddEditUserModal({
           </button>
           <button
             type="button"
-            onClick={onSave}
-            className="rounded-xl bg-gradient-to-r from-green-600 to-green-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-200/50 transition-all hover:from-green-700 hover:to-green-800 cursor-pointer"
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-xl bg-gradient-to-r from-green-600 to-green-700 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-green-200/50 transition-all hover:from-green-700 hover:to-green-800 cursor-pointer disabled:opacity-60"
           >
-            {mode === "add" ? "Save User" : "Update User"}
+            {saving ? "Saving..." : mode === "add" ? "Save User" : "Update User"}
           </button>
         </div>
       </div>
@@ -206,8 +253,13 @@ function ViewUserModal({ user, onClose }: { user: User; onClose: () => void }) {
         </div>
         <div className="px-6 py-6">
           <div className="flex flex-col items-center text-center">
-            <div className={`mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br ${user.color} text-xl font-bold text-white shadow-lg`}>
-              {user.initials}
+            <div className="mb-4">
+              <UserAvatar
+                name={user.fullName}
+                className="h-16 w-16 rounded-full shadow-lg"
+                fallbackClassName={user.color}
+                textClassName="text-xl font-bold"
+              />
             </div>
             <h4 className="text-lg font-bold text-gray-900">{user.fullName}</h4>
             <p className="text-sm text-gray-500">@{user.username}</p>
@@ -245,7 +297,30 @@ function ViewUserModal({ user, onClose }: { user: User; onClose: () => void }) {
   );
 }
 
-function DeleteModal({ user, onClose }: { user: User; onClose: () => void }) {
+function DeleteModal({
+  user,
+  onClose,
+  onDelete,
+}: {
+  user: User;
+  onClose: () => void;
+  onDelete: () => Promise<void>;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleDelete() {
+    setError("");
+    setDeleting(true);
+    try {
+      await onDelete();
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: string } } };
+      setError(axiosErr.response?.data?.detail || "Failed to delete user");
+      setDeleting(false);
+    }
+  }
+
   return (
     <ModalOverlay onClose={onClose}>
       <div className="rounded-2xl border border-red-100/80 bg-white shadow-2xl">
@@ -259,6 +334,9 @@ function DeleteModal({ user, onClose }: { user: User; onClose: () => void }) {
           <p className="mt-2 text-sm text-gray-500">
             Are you sure you want to delete <span className="font-semibold text-gray-700">{user.fullName}</span>? This action cannot be undone.
           </p>
+          {error && (
+            <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+          )}
         </div>
         <div className="flex items-center gap-3 border-t border-red-50 px-6 py-4">
           <button
@@ -270,10 +348,11 @@ function DeleteModal({ user, onClose }: { user: User; onClose: () => void }) {
           </button>
           <button
             type="button"
-            onClick={onClose}
-            className="flex-1 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-200/50 transition-all hover:bg-red-600 cursor-pointer"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex-1 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-200/50 transition-all hover:bg-red-600 cursor-pointer disabled:opacity-60"
           >
-            Delete
+            {deleting ? "Deleting..." : "Delete"}
           </button>
         </div>
       </div>
@@ -282,7 +361,7 @@ function DeleteModal({ user, onClose }: { user: User; onClose: () => void }) {
 }
 
 export default function UsersPage() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, refreshUser } = useAuth();
   const userRole = (authUser?.role || "Volunteer") as Role;
   const canManage = canAccess(userRole, "users", "canCreate");
   const canEditDelete = canAccess(userRole, "users", "canDelete");
@@ -361,6 +440,27 @@ export default function UsersPage() {
     setModal(null);
     setSelectedUser(null);
   }, []);
+
+  const handleCreate = useCallback(async (data: UserFormData) => {
+    await usersService.create(data);
+    setAllUsers(await usersService.list());
+    closeModal();
+  }, [closeModal]);
+
+  const handleUpdate = useCallback(async (userId: number, data: UserFormData) => {
+    await usersService.update(userId, data);
+    if (authUser?.id === userId) {
+      await refreshUser();
+    }
+    setAllUsers(await usersService.list());
+    closeModal();
+  }, [authUser, refreshUser, closeModal]);
+
+  const handleDelete = useCallback(async (userId: number) => {
+    await usersService.remove(userId);
+    setAllUsers(await usersService.list());
+    closeModal();
+  }, [closeModal]);
 
   return (
     <div className="space-y-6">
@@ -467,9 +567,12 @@ export default function UsersPage() {
                 {filtered.map((u) => (
                   <tr key={u.id} className="transition-colors hover:bg-green-50/30">
                     <td className="px-6 py-3.5">
-                      <div className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${u.color} text-xs font-bold text-white shadow-sm`}>
-                        {u.initials}
-                      </div>
+                      <UserAvatar
+                        name={u.fullName}
+                        className="h-9 w-9 rounded-full shadow-sm"
+                        fallbackClassName={u.color}
+                        textClassName="text-xs font-bold"
+                      />
                     </td>
                     <td className="whitespace-nowrap px-6 py-3.5 text-sm font-medium text-gray-800">{u.fullName}</td>
                     <td className="whitespace-nowrap px-6 py-3.5 text-sm text-gray-500">@{u.username}</td>
@@ -518,9 +621,12 @@ export default function UsersPage() {
           {filtered.map((u) => (
             <div key={u.id} className="px-4 py-3 space-y-2">
               <div className="flex items-center gap-3">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${u.color} text-xs font-bold text-white shadow-sm`}>
-                  {u.initials}
-                </div>
+                <UserAvatar
+                  name={u.fullName}
+                  className="h-9 w-9 shrink-0 rounded-full shadow-sm"
+                  fallbackClassName={u.color}
+                  textClassName="text-xs font-bold"
+                />
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-gray-800 truncate">{u.fullName}</p>
                   <p className="text-xs text-gray-500 truncate">@{u.username}</p>
@@ -570,16 +676,21 @@ export default function UsersPage() {
 
       {/* Modals */}
       {modal === "add" && (
-        <AddEditUserModal mode="add" onClose={closeModal} onSave={closeModal} />
+        <AddEditUserModal mode="add" onClose={closeModal} onSave={handleCreate} />
       )}
       {modal === "edit" && selectedUser && (
-        <AddEditUserModal mode="edit" user={selectedUser} onClose={closeModal} onSave={closeModal} />
+        <AddEditUserModal
+          mode="edit"
+          user={selectedUser}
+          onClose={closeModal}
+          onSave={(data) => handleUpdate(selectedUser.id, data)}
+        />
       )}
       {modal === "view" && selectedUser && (
         <ViewUserModal user={selectedUser} onClose={closeModal} />
       )}
       {modal === "delete" && selectedUser && (
-        <DeleteModal user={selectedUser} onClose={closeModal} />
+        <DeleteModal user={selectedUser} onClose={closeModal} onDelete={() => handleDelete(selectedUser.id)} />
       )}
       </>
       )}

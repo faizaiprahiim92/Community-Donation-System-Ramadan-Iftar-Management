@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { users } from "@/lib/mock-data";
+import UserAvatar from "@/components/UserAvatar";
 
 export default function RecipientSelector({
   selected,
@@ -70,8 +71,13 @@ export default function RecipientSelector({
               selected.includes(user.id) ? "bg-green-50" : "hover:bg-gray-100"
             }`}
           >
-            <div className={`relative h-7 w-7 shrink-0 rounded-full bg-gradient-to-br ${user.color} flex items-center justify-center`}>
-              <span className="text-[9px] font-bold text-white">{user.initials}</span>
+            <div className="relative h-7 w-7 shrink-0">
+              <UserAvatar
+                name={user.fullName}
+                className="h-7 w-7 rounded-full"
+                fallbackClassName={user.color}
+                textClassName="text-[9px]"
+              />
               {selected.includes(user.id) && (
                 <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-green-500 flex items-center justify-center">
                   <svg className="h-2 w-2 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={3} stroke="currentColor">

@@ -6,6 +6,12 @@ import { useAuth } from "@/lib/contexts/AuthContext";
 import StatCard from "@/components/dashboard/StatCard";
 import ActivityTable from "@/components/dashboard/ActivityTable";
 import AnnouncementCard from "@/components/dashboard/AnnouncementCard";
+import {
+  AddAnnouncementModal,
+  EditAnnouncementModal,
+  DeleteAnnouncementModal,
+  type AnnouncementItem,
+} from "@/components/dashboard/AnnouncementModal";
 import GalleryPreview from "@/components/dashboard/GalleryPreview";
 import PageHeader from "@/components/dashboard/PageHeader";
 import { donationsService, type Donation } from "@/lib/services/donations";
@@ -14,7 +20,55 @@ import { tasksService, type Task } from "@/lib/services/tasks";
 import { reportsService } from "@/lib/services/reports";
 import { galleryService } from "@/lib/services/gallery";
 import { usersService } from "@/lib/services/users";
-import { fetchMessages } from "@/lib/services/messages";
+import {
+  fetchMessages,
+  createMessage,
+  updateMessage,
+  deleteMessage,
+  type Message,
+} from "@/lib/services/messages";
+import { canAccess, type Role } from "@/lib/permissions";
+
+function mapAnnouncements(messages: Message[]): AnnouncementItem[] {
+  return messages
+    .filter((m) => m.isAnnouncement)
+    .slice(0, 3)
+    .map((m) => ({
+      id: m.id,
+      title: m.subject,
+      description: m.content,
+      date: m.date,
+      type: "info",
+    }));
+}
+
+const TEAM_ACTIVITIES: { userId: number; date: string; activity: string; status: string }[] = [
+  /* Usama Hassan Abdi (Manager) */
+  { userId: 1, date: "Jul 19, 2026", activity: "Project planning", status: "completed" },
+  { userId: 1, date: "Jul 19, 2026", activity: "Team coordination", status: "completed" },
+  { userId: 1, date: "Jul 20, 2026", activity: "Donation supervision", status: "completed" },
+  { userId: 1, date: "Jul 21, 2026", activity: "Ramadan campaign management", status: "completed" },
+  { userId: 1, date: "Jul 23, 2026", activity: "Documentation", status: "completed" },
+  /* Ilhaam Omar Farah (Leader) */
+  { userId: 2, date: "Jul 19, 2026", activity: "Team coordination", status: "completed" },
+  { userId: 2, date: "Jul 19, 2026", activity: "Donation management", status: "completed" },
+  { userId: 2, date: "Jul 20, 2026", activity: "System development", status: "completed" },
+  { userId: 2, date: "Jul 21, 2026", activity: "Documentation", status: "completed" },
+  { userId: 2, date: "Jul 23, 2026", activity: "Ramadan Iftar distribution", status: "completed" },
+  /* Faiza Ibrahiim Abdullahi (Volunteer) */
+  { userId: 3, date: "Jul 19, 2026", activity: "System development", status: "completed" },
+  { userId: 3, date: "Jul 20, 2026", activity: "Documentation", status: "completed" },
+  { userId: 3, date: "Jul 23, 2026", activity: "Iftar meal distribution", status: "completed" },
+  /* Nasteha Mohamed Hassan (Volunteer) */
+  { userId: 4, date: "Jul 19, 2026", activity: "System development", status: "completed" },
+  { userId: 4, date: "Jul 20, 2026", activity: "Documentation", status: "completed" },
+  { userId: 4, date: "Jul 23, 2026", activity: "Iftar meal distribution", status: "completed" },
+  /* Sawda Mohamed Omar (Volunteer) */
+  { userId: 5, date: "Jul 19, 2026", activity: "Iftar meal distribution", status: "completed" },
+  { userId: 5, date: "Jul 20, 2026", activity: "Photography", status: "completed" },
+  { userId: 5, date: "Jul 21, 2026", activity: "Video recording", status: "completed" },
+  { userId: 5, date: "Jul 23, 2026", activity: "Campaign documentation", status: "completed" },
+];
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -23,7 +77,10 @@ export default function DashboardPage() {
   const [recentDonations, setRecentDonations] = useState<Donation[]>([]);
   const [recentExpenses, setRecentExpenses] = useState<Expense[]>([]);
   const [recentActivities, setRecentActivities] = useState<{ date: string; activity: string; user: string; status: string }[]>([]);
-  const [announcements, setAnnouncements] = useState<{ id: number; title: string; description: string; date: string; type: string }[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [announcementModal, setAnnouncementModal] = useState<"add" | "edit" | null>(null);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementItem | null>(null);
+  const [deleteAnnouncement, setDeleteAnnouncement] = useState<AnnouncementItem | null>(null);
   const [galleryImages, setGalleryImages] = useState<{ id: number; alt: string; color: string; url?: string; type?: string }[]>([]);
   const [campaignData, setCampaignData] = useState({ peopleServed: 0, mealsPrepared: 0, mealsRemaining: 0, campaignDays: 0 });
   const [myTasks, setMyTasks] = useState<Task[]>([]);
@@ -75,11 +132,10 @@ export default function DashboardPage() {
           campaignDays: repStats.campaignDays,
         });
 
-        const [donations, expenses, tasks, reports, gallery, messages] = await Promise.all([
+        const [donations, expenses, tasks, gallery, messages] = await Promise.all([
           donationsService.list(),
           expensesService.list(),
           tasksService.list(),
-          reportsService.list(),
           galleryService.list(),
           fetchMessages({}),
         ]);
@@ -89,45 +145,24 @@ export default function DashboardPage() {
         setRecentDonations(donations.slice(0, 5));
         setRecentExpenses(expenses.slice(0, 5));
 
+        const myActs: { date: string; activity: string; user: string; status: string }[] = user
+          ? TEAM_ACTIVITIES.filter((a) => a.userId === user.id).map((a) => ({
+              date: a.date,
+              activity: a.activity,
+              user: user.full_name,
+              status: a.status,
+            }))
+          : [];
+
         if (isVolunteer && user) {
           const myTaskList = tasks.filter((t) => t.assignedToId === user.id);
           setMyTasks(myTaskList.slice(0, 5));
-
-          const myActs: { date: string; activity: string; user: string; status: string }[] = [];
-          donations.filter((d) => d.status === "Completed").slice(0, 2).forEach((d) => {
-            myActs.push({ date: d.date, activity: `Donation received - $${d.amount || 0} from ${d.donorName}`, user: user.full_name, status: "completed" });
-          });
-          myTaskList.slice(0, 3).forEach((t) => {
-            myActs.push({ date: t.startDate, activity: t.name, user: user.full_name, status: t.status === "Completed" ? "completed" : "in_progress" });
-          });
-          reports.slice(0, 2).forEach((r) => {
-            myActs.push({ date: r.date, activity: `Daily report - ${r.peopleServed} people served`, user: r.teamLeader, status: "completed" });
-          });
-          setMyActivities(myActs.slice(0, 10));
+          setMyActivities(myActs);
         } else {
-          const activities: { date: string; activity: string; user: string; status: string }[] = [];
-          donations.slice(0, 3).forEach((d) => {
-            activities.push({ date: d.date, activity: `Donation received - $${d.amount || 0} from ${d.donorName}`, user: "System", status: "completed" });
-          });
-          expenses.slice(0, 3).forEach((e) => {
-            activities.push({ date: e.date, activity: `Expense added - ${e.name} ($${e.totalCost})`, user: e.paidBy, status: "completed" });
-          });
-          tasks.slice(0, 2).forEach((t) => {
-            activities.push({ date: t.startDate, activity: `Task - ${t.name}`, user: t.assignedTo, status: t.status === "Completed" ? "completed" : "in_progress" });
-          });
-          reports.slice(0, 2).forEach((r) => {
-            activities.push({ date: r.date, activity: `Daily report - ${r.peopleServed} people served`, user: r.teamLeader, status: "completed" });
-          });
-          setRecentActivities(activities.slice(0, 10));
+          setRecentActivities(myActs);
         }
 
-        setAnnouncements(messages.filter((m) => m.isAnnouncement).slice(0, 3).map((m) => ({
-          id: m.id,
-          title: m.subject,
-          description: m.content,
-          date: m.date,
-          type: "info",
-        })));
+        setAnnouncements(mapAnnouncements(messages));
 
         setGalleryImages(gallery.slice(0, 6).map((g) => ({
           id: g.id,
@@ -148,6 +183,55 @@ export default function DashboardPage() {
 
   const displayName = user?.full_name || "User";
   const userRole = user?.role || "Volunteer";
+
+  const canManageAnnouncements = canAccess(userRole as Role, "announcements", "canCreate");
+
+  async function refreshAnnouncements() {
+    try {
+      const messages = await fetchMessages({});
+      setAnnouncements(mapAnnouncements(messages));
+    } catch (err) {
+      console.error("Failed to load announcements:", err);
+    }
+  }
+
+  async function handleAddAnnouncement(data: { title: string; description: string }) {
+    try {
+      await createMessage({
+        subject: data.title,
+        content: data.description,
+        priority: "Medium",
+        isAnnouncement: true,
+        recipientIds: [],
+        attachments: [],
+      });
+      await refreshAnnouncements();
+    } catch (err) {
+      console.error("Failed to create announcement:", err);
+    }
+    setAnnouncementModal(null);
+  }
+
+  async function handleEditAnnouncement(id: number, data: { title: string; description: string }) {
+    try {
+      await updateMessage(id, { subject: data.title, content: data.description });
+      await refreshAnnouncements();
+    } catch (err) {
+      console.error("Failed to update announcement:", err);
+    }
+    setAnnouncementModal(null);
+    setEditingAnnouncement(null);
+  }
+
+  async function handleDeleteAnnouncement(id: number) {
+    try {
+      await deleteMessage(id);
+      await refreshAnnouncements();
+    } catch (err) {
+      console.error("Failed to delete announcement:", err);
+    }
+    setDeleteAnnouncement(null);
+  }
 
   if (loading) {
     return (
@@ -256,7 +340,12 @@ export default function DashboardPage() {
 
           {/* Announcements & Gallery */}
           <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-            <AnnouncementCard announcements={announcements} />
+            <AnnouncementCard
+              announcements={announcements}
+              onAdd={canManageAnnouncements ? () => setAnnouncementModal("add") : undefined}
+              onEdit={canManageAnnouncements ? (item) => { setEditingAnnouncement(item); setAnnouncementModal("edit"); } : undefined}
+              onDelete={canManageAnnouncements ? (item) => setDeleteAnnouncement(item) : undefined}
+            />
             <GalleryPreview images={galleryImages} />
           </div>
         </>
@@ -476,7 +565,12 @@ export default function DashboardPage() {
 
           {/* Announcements & Gallery */}
           <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-            <AnnouncementCard announcements={announcements} />
+            <AnnouncementCard
+              announcements={announcements}
+              onAdd={canManageAnnouncements ? () => setAnnouncementModal("add") : undefined}
+              onEdit={canManageAnnouncements ? (item) => { setEditingAnnouncement(item); setAnnouncementModal("edit"); } : undefined}
+              onDelete={canManageAnnouncements ? (item) => setDeleteAnnouncement(item) : undefined}
+            />
             <GalleryPreview images={galleryImages} />
           </div>
 
@@ -525,6 +619,27 @@ export default function DashboardPage() {
             </div>
           </div>
         </>
+      )}
+
+      {announcementModal === "add" && (
+        <AddAnnouncementModal
+          onClose={() => setAnnouncementModal(null)}
+          onAdd={handleAddAnnouncement}
+        />
+      )}
+      {announcementModal === "edit" && editingAnnouncement && (
+        <EditAnnouncementModal
+          item={editingAnnouncement}
+          onClose={() => { setAnnouncementModal(null); setEditingAnnouncement(null); }}
+          onSave={handleEditAnnouncement}
+        />
+      )}
+      {deleteAnnouncement && (
+        <DeleteAnnouncementModal
+          item={deleteAnnouncement}
+          onClose={() => setDeleteAnnouncement(null)}
+          onDelete={handleDeleteAnnouncement}
+        />
       )}
     </div>
   );
