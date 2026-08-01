@@ -63,6 +63,23 @@ def _copy_table(src, conn, table):
     return len(data)
 
 
+def _reset_sequences(conn, sa_text, tables):
+    for table in tables:
+        pk = [c for c in table.columns if c.primary_key]
+        if len(pk) != 1:
+            continue
+        col = pk[0].name
+        seq_sql = f"pg_get_serial_sequence('{table.name}', '{col}')"
+        try:
+            conn.execute(
+                sa_text(
+                    f"SELECT setval({seq_sql}, GREATEST((SELECT COALESCE(MAX({col}), 1) FROM {table.name}), 1))"
+                )
+            )
+        except Exception as exc:
+            print(f"  sequence {table.name}.{col}: {exc}")
+
+
 def _migrate_media(pg_engine):
     from sqlalchemy import text as sa_text
 
@@ -146,7 +163,14 @@ def main():
         default=str(ROOT / "backend" / "community_donation.db"),
         help="Path to the source SQLite database file",
     )
+    parser.add_argument(
+        "--truncate",
+        action="store_true",
+        help="Truncate all target tables before copying (use when target already contains seed data)",
+    )
     args = parser.parse_args()
+
+    sys.path.insert(0, str(ROOT / "backend"))
 
     from app.core.config import settings  # noqa: F401  (loads env)
     from app.database.database import Base
@@ -176,10 +200,17 @@ def main():
     src = sqlite3.connect(sqlite_path)
     src.row_factory = sqlite3.Row
     try:
-        print("Copying data...")
         with pg_engine.begin() as conn:
+            from sqlalchemy import text as sa_text
+
+            if args.truncate:
+                names = ", ".join(t.name for t in Base.metadata.sorted_tables)
+                print(f"Truncating target tables: {names}")
+                conn.execute(sa_text(f"TRUNCATE {names} RESTART IDENTITY CASCADE"))
+            print("Copying data...")
             for table in Base.metadata.sorted_tables:
                 _copy_table(src, conn, table)
+            _reset_sequences(conn, sa_text, Base.metadata.sorted_tables)
     finally:
         src.close()
 
