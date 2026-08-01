@@ -5,11 +5,20 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
+from app.core.config import settings
 from app.database.database import get_db
 from app.models.gallery_item import GalleryItem
 from app.models.user import User
 from app.permissions import require_manager_or_leader
 from app.schemas.gallery_item import GalleryItemCreate, GalleryItemResponse, GalleryItemUpdate
+from app.services.storage import (
+    StorageError,
+    content_type_for,
+    delete_object,
+    path_from_url,
+    storage_configured,
+    upload_object,
+)
 
 router = APIRouter(prefix="/api/gallery", tags=["gallery"])
 
@@ -148,11 +157,8 @@ async def upload_gallery_item(
             detail=f"File extension {ext} not allowed for {media_type}s.",
         )
 
-    target_dir.mkdir(parents=True, exist_ok=True)
-
     file_name = Path(file.filename or f"upload_{current.id}{ext}").name
     safe_name = f"{current.id}_{title.replace(' ', '_')}_{file_name}"
-    save_path = target_dir / safe_name
 
     content = await file.read()
     if len(content) > MAX_UPLOAD_SIZE:
@@ -161,11 +167,25 @@ async def upload_gallery_item(
             detail=f"File too large. Maximum size is {MAX_UPLOAD_SIZE // (1024 * 1024)} MB.",
         )
 
-    with open(save_path, "wb") as f:
-        f.write(content)
+    bucket = settings.STORAGE_BUCKET_VIDEOS if media_type == "Video" else settings.STORAGE_BUCKET_PHOTOS
+
+    if storage_configured():
+        try:
+            file_path_str = upload_object(bucket, safe_name, content, content_type_for(ext))
+        except StorageError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to upload to storage: {exc}",
+            )
+    else:
+        target_dir = VIDEOS_DIR if media_type == "Video" else PHOTOS_DIR
+        target_dir.mkdir(parents=True, exist_ok=True)
+        save_path = target_dir / safe_name
+        with open(save_path, "wb") as f:
+            f.write(content)
+        file_path_str = f"/uploads/{'videos' if media_type == 'Video' else 'photos'}/{safe_name}"
 
     file_size_str = _format_size(len(content))
-    file_path_str = f"/uploads/{'videos' if media_type == 'Video' else 'photos'}/{safe_name}"
 
     from datetime import datetime as dt
     parsed_date = dt.fromisoformat(date.replace("Z", "+00:00")) if date else dt.now()
@@ -223,9 +243,18 @@ def delete_gallery_item(
             detail="You do not have permission to delete this item.",
         )
     if item.file_path:
-        full_path = Path(__file__).resolve().parent.parent.parent / item.file_path.lstrip("/")
-        if full_path.exists():
-            os.remove(full_path)
+        if storage_configured():
+            bucket = settings.STORAGE_BUCKET_VIDEOS if item.type == "Video" else settings.STORAGE_BUCKET_PHOTOS
+            path = path_from_url(item.file_path, bucket)
+            if path:
+                try:
+                    delete_object(bucket, path)
+                except StorageError:
+                    pass
+        else:
+            full_path = Path(__file__).resolve().parent.parent.parent / item.file_path.lstrip("/")
+            if full_path.exists():
+                os.remove(full_path)
     db.delete(item)
     db.commit()
     return {"message": "Gallery item deleted"}

@@ -4,6 +4,15 @@ import { useState } from "react";
 
 const PHOTO_EXTENSIONS = ["jpg", "png", "webp"];
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "") || "";
+const PHOTO_BUCKET = "photos";
+
+function photoSrc(firstName: string, ext: string): string {
+  return SUPABASE_URL
+    ? `${SUPABASE_URL}/storage/v1/object/public/${PHOTO_BUCKET}/profile/${firstName}.${ext}`
+    : `/uploads/photos/${firstName}.${ext}`;
+}
+
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
@@ -32,7 +41,7 @@ export default function UserAvatar({
     const ext = PHOTO_EXTENSIONS[attempt];
     return (
       <img
-        src={`/uploads/photos/${firstName}.${ext}`}
+        src={photoSrc(firstName, ext)}
         alt={name}
         loading="lazy"
         onError={() => {

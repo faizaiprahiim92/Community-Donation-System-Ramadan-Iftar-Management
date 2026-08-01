@@ -51,7 +51,11 @@ function toFrontend(g: BackendGallery, nameMap: Record<number, string> = {}): Ga
   try {
     parsedTags = JSON.parse(g.tags);
   } catch { /* ignore */ }
-  const videoUrl = g.file_path ? `${API_BASE_URL}${g.file_path}` : undefined;
+  const videoUrl = g.file_path
+    ? g.file_path.startsWith("http")
+      ? g.file_path
+      : `${API_BASE_URL}${g.file_path}`
+    : undefined;
   return {
     id: g.id,
     type: g.type as "Photo" | "Video",
@@ -81,7 +85,7 @@ function toBackend(g: Partial<GalleryItem>, nameToId: Record<string, number>) {
     tags: JSON.stringify(g.tags || []),
     color: g.color || "from-green-100 to-green-200",
     file_name: g.fileName || null,
-    file_path: g.videoUrl ? new URL(g.videoUrl).pathname : null,
+    file_path: g.videoUrl || null,
     file_size: g.size || "1 MB",
     duration: g.duration ?? null,
   };

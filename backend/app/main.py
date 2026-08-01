@@ -146,7 +146,8 @@ app.include_router(gallery.router)
 app.include_router(messages.router)
 
 uploads_dir = Path(__file__).resolve().parent.parent / "uploads"
-app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+if uploads_dir.exists():
+    app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 
 def _format_size(size_bytes: int) -> str:
@@ -203,7 +204,12 @@ def _scan_existing_media():
 @app.on_event("startup")
 def on_startup():
     seed_database()
-    _scan_existing_media()
+    from app.services.storage import ensure_buckets, storage_configured
+
+    if storage_configured():
+        ensure_buckets()
+    else:
+        _scan_existing_media()
 
 
 @app.get("/api")
